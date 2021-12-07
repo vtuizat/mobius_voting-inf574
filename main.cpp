@@ -7,6 +7,9 @@
 #include <iostream>
 #include <ostream>
 
+#include "MidEdgeDS.cpp"
+#include "HarmonicSolver.cpp"
+
 using namespace Eigen; // to use the classes provided by Eigen library
 
 MatrixXd V1; // matrix storing vertex coordinates of the input mesh (n rows, 3 columns)
@@ -125,9 +128,7 @@ MatrixXd sample_correspondances(const MatrixXd &V, const MatrixXi &F, int N){
   return sortedV;
 }
 
-void compute_mid_edge_Mesh(const MatrixXd &V, const MatrixXi &F, const MatrixXd &V_mid, const MatrixXi &F_mid){
-  
-}
+
 // ------------ main program ----------------
 int main(int argc, char *argv[])
 {
@@ -138,11 +139,28 @@ int main(int argc, char *argv[])
   std::cout << "Vertices: " << V1.rows() << std::endl;
   std::cout << "Faces:    " << F1.rows() << std::endl;
 
+  TriangleMeshDS *mesh = new TriangleMeshDS(V1, F1);
+  MatrixXd angles;
+  angles = mesh->compute_angles();
+  
+  MidEdgeDS *midedgemesh = new MidEdgeDS(*mesh);
+
+  // V1 = midedgemesh->getVert();
+  // F1 = midedgemesh->getFaces();
+
+
+  std::cout << "Vertices_midEdge: " << V1.rows() << std::endl;
+  std::cout << "Faces_midEdge:    " << F1.rows() << std::endl;
+
+  HarmonicSolver *HS = new HarmonicSolver(V1.rows(), F1.rows(), angles);
+
+  HS->compute_harmonic_weights(F1);
+
   igl::opengl::glfw::Viewer viewer; // create the 3d viewer
   viewer.callback_key_down = &key_down; // for dealing with keyboard events
   viewer.data().set_mesh(V1, F1); // load a face-based representation of the input 3d shape
-  MatrixXd sampledPoints = sample_correspondances(V1, F1, 20);
-  draw_dots(viewer, sampledPoints); // draw the boundaing box (red edges and vertices)
+  // MatrixXd sampledPoints = sample_correspondances(V1, F1, 20);
+  // draw_dots(viewer, sampledPoints); // draw the boundaing box (red edges and vertices)
 
   viewer.launch(); // run the editor
 }
