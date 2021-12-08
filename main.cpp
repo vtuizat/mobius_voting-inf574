@@ -145,8 +145,8 @@ int main(int argc, char *argv[])
   
   MidEdgeDS *midedgemesh = new MidEdgeDS(*mesh);
 
-  // V1 = midedgemesh->getVert();
-  // F1 = midedgemesh->getFaces();
+  //V1 = midedgemesh->getVert();
+  //F1 = midedgemesh->getFaces();
 
 
   std::cout << "Vertices_midEdge: " << V1.rows() << std::endl;
