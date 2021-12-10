@@ -1,6 +1,7 @@
 #include <igl/opengl/glfw/Viewer.h>
 #include <igl/edges.h>
 #include <igl/per_vertex_normals.h>
+#include <igl/exact_geodesic.h>
 #include <fstream>
 #include <iostream>
 #include <ostream>
@@ -78,6 +79,42 @@ public:
 		}
 
 		return angles_per_faces;
+
+	}
+
+	int get_cut_face(){
+
+		double mean_dist, min_mean;
+
+		VectorXd dist_f;
+		VectorXi all_faces;
+		all_faces.setLinSpaced((*F).rows(),0,(*F).rows()-1);
+		dist_f = geodesic_dist_face(0, all_faces);
+		min_mean = dist_f.mean();
+
+		int idx = 0;
+		for (int f = 1; f < nFaces; f++){
+			dist_f = geodesic_dist_face(f, all_faces);
+			mean_dist = dist_f.mean();
+			if (mean_dist < min_mean) {
+				min_mean = mean_dist;
+				idx = f;
+			}
+		}
+
+		return idx;
+	}
+
+	VectorXd geodesic_dist_face(int f, VectorXi targets){
+
+		VectorXi VS, FS, VT, FT;
+		FS.resize(1);
+		FS << f;
+		FT = targets;
+		VectorXd dist;
+		igl::exact_geodesic(*V, *F, VS, FS, VT, FT, dist);
+
+		return dist;
 
 	}
 

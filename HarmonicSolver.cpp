@@ -1,4 +1,5 @@
 #include <igl/opengl/glfw/Viewer.h>
+#include <igl/vertex_triangle_adjacency.h>
 #include <iostream>
 #include <ostream>
 
@@ -30,10 +31,24 @@ public:
         MatrixXd L = compute_matrix(F);
 
         //solve L;
+
+        compute_conjugates(F);
         
     }
     
 private:
+
+    void compute_conjugates(MatrixXi &F){
+        (*harmonic_weights)(F(0, 0)) = 0;
+        std::vector<std::vector<int>> VF, VI;
+        igl::vertex_triangle_adjacency(nVertices, F, VF, VI);
+        for (int i = 0; i < nVertices; i++){
+            for (int j = 0; j < VF[i].size(); j++){
+                std::cout<<VF[i][j]<<", ";
+            }
+            std::cout<<"\n";
+        }
+    }
 
     MatrixXd compute_matrix(MatrixXi &F){
         
@@ -42,12 +57,19 @@ private:
         for (int i = 0; i < nVertices; i++){
 
             float sum = 0;
+
             MatrixXd adjacency_angles = compute_adjacency(i, F);
 
             for (int j = 0; j < adjacency_angles.rows(); j++){
 
                 int adj_vert = int(adjacency_angles(j, 0));
-                L(i, adj_vert) = (cot(adjacency_angles(j, 1))+cot(adjacency_angles(j, 2)))/2.0;
+                if(adjacency_angles(j, 2) == -1.0) {
+                    std::cout<<"Edge at "<<i<<"-"<<adj_vert<<"\n";
+                    L(i, adj_vert) = cot(adjacency_angles(j, 1))/2.0;
+                }
+                else {
+                    L(i, adj_vert) = (cot(adjacency_angles(j, 1))+cot(adjacency_angles(j, 2)))/2.0;
+                }
                 sum += L(i, adj_vert);
             }
 
@@ -68,24 +90,15 @@ private:
         int nAdjVertices = adj.size();
         int nAdjFaces = adj_faces.size();
 
-        if (nAdjFaces != nAdjVertices){
-            std::cout<<"Edge at "<< v<<"\n";
-            MatrixXd support_angles;
 
-            return support_angles;
-        }
-
-        else{
-            MatrixXd support_angles = MatrixXd::Constant(nAdjVertices, 3, -1.0);
-            VectorXd adj_d;
-            adj_d = adj.cast<double>();
-            support_angles.col(0) = adj_d;
-            
-            get_support_angles(v, F, adj, adj_faces, support_angles);
-            
-            return support_angles;
-        }
-
+        MatrixXd support_angles = MatrixXd::Constant(nAdjVertices, 3, -1.0);
+        VectorXd adj_d;
+        adj_d = adj.cast<double>();
+        support_angles.col(0) = adj_d;
+        
+        get_support_angles(v, F, adj, adj_faces, support_angles);
+        
+        return support_angles;
 
     }
 
