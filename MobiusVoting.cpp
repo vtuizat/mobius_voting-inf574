@@ -5,6 +5,10 @@
 #include <iostream>
 #include <ostream>
 #include <algorithm>
+#include <complex>
+#include <cmath>
+
+
 
 #ifndef TRIANGLEMESHDS_HEADER
    #define TRIANGLEMESHDS_HEADER
@@ -27,14 +31,20 @@ public:
     ~MobiusVoting();
 
     void computeCorrespondances(int votingIterations, int minimalSubsetSize){
+
         // sampling potential correspondances for each mesh
         MatrixXd S1 = sample_correspondances(V1, F1, 50);
         MatrixXd S2 = sample_correspondances(V2, F2, 50);
 
-        //
+        //compute mapping
+
+        VectorXcd mappedS1, mappedS2;
+
+        MatrixXd C(S1.rows(), S2.rows()); // correspondence matrix
+        double epsilon = 0.001;
 
         for (int i = 0; i < votingIterations; i++){
-            // take 3 random points from potential correspondances for each mesh
+            // pick 3 random points from potential correspondances for each mesh
             VectorXi Z1(3);
             VectorXi Z2(3);
             do{
@@ -45,8 +55,36 @@ public:
             } while(Z1(0) == Z1(1) || Z1(2) == Z1(1) || Z1(0) == Z1(2) || Z2(0) == Z2(1) || Z2(2) == Z2(1) || Z2(0) == Z2(2));
 
             // compute mobius transformations for both triplets
+            Vector3cd origin1, origin2, target;
+            origin1 << mappedS1(Z1(0)), mappedS1(Z1(1)), mappedS1(Z1(2));
+            origin2 << mappedS2(Z2(0)), mappedS2(Z2(1)), mappedS2(Z2(2));
+            std::complex<double> comp_j( -1 / 2, sqrt(3) / 2);
+            target << 1.0, comp_j, conj(comp_j);
+            Matrix2cd mobius1 = mobius_interpolate(origin1, target);
+            Matrix2cd mobius2 = mobius_interpolate(origin2, target);
 
+            // apply mobius transformations to S1 and S2
+            VectorXcd mobiusMappedS1 = mobius_apply(mappedS1, mobius1);
+            VectorXcd mobiusMappedS2 = mobius_apply(mappedS2, mobius2);
 
+            // find mutually nearest neighbors between mobiusMappedS2 and mobiusMappedS2
+            MatrixXi MNN = mutual_nearest_neighbor(CtoR3(mobiusMappedS1),CtoR3(mobiusMappedS1));
+            int valid_couples = 0;
+            for (int k = 0; k < MNN.rows(); k++){
+                if(MNN.row(k)(0) != -1) valid_couples++;
+            }
+
+            // voting process
+            
+            if (valid_couples > minimalSubsetSize){
+                // deformation energy
+                double E_c = computeDeformationEnergy(CtoR3(mobiusMappedS1),CtoR3(mobiusMappedS1),MNN);
+                for (int k = 0; k < MNN.rows(); k++){
+                    if(MNN.row(k)(0) != -1) {
+                        C(k,MNN.row(k)(0)) += 1 / (epsilon);
+                    }
+                }
+            }
 
         }
 
@@ -126,9 +164,9 @@ private:
     }
 
 /**
- * 
+ * returns the correspondances form set2 for each element of set1, if no correspondqnce the value is set to -1
  * */
-    MatrixXi mutual_nearest_neighbor(MatrixXd &set1, MatrixXd &set2){
+    MatrixXi mutual_nearest_neighbor(MatrixXd set1, MatrixXd set2){
         int n = set1.rows();
 
         // knn from the other set for set1 and set2
@@ -169,6 +207,7 @@ private:
 
         // finding mutual neighbors
         std::vector<Vector3i> candidates;
+        
         for (int i = 0; i < n; i++){
 
             for (int j = 0; j < n_neighbors; j++){
@@ -177,12 +216,56 @@ private:
                 candidates.push_back(elt);
             }
         }
+        
         std::sort(candidates.begin(), candidates.end(),
             [](Vector3i a, Vector3i b) {
                 return (a(2) < b(2));
             } 
         );
-    }    
+
+        //selecting the best pairs
+        MatrixXi correspondances = -1 * MatrixXi::Ones(n, 2);
+        int count = 0;
+        int paired_count = 0;
+        while (count < candidates.size() && paired_count < n){
+            if(correspondances(candidates.at(count)(0),0) == -1){
+                correspondances.row(candidates.at(count)(0)) << candidates.at(count)(1), candidates.at(count)(2);
+                paired_count++;
+            }
+            else if(candidates.at(count)(2) == correspondances.row(candidates.at(count)(0))(1) &&
+            (set1.row(candidates.at(count)(0)) - set2.row(candidates.at(count)(1))).norm() > (set1.row(candidates.at(count)(0)) - set2.row(correspondances.row(candidates.at(count)(0))(0) )).norm() ){
+                correspondances.row(candidates.at(count)(0)) << candidates.at(count)(1), candidates.at(count)(2);
+            }
+            count++;
+        }
+
+        return correspondances.col(0);
+    }
+
+/**
+ * transforms a list of complex points into a list of points in R3 (z=0)
+ * */
+    MatrixXd CtoR3(VectorXcd points){
+        MatrixXd M(points.size(), 3);
+        for (int i = 0; i < points.size(); i++){
+            M.row(i) << points(i).real(), points(i).imag(), 0.0;
+        }
+        return M;
+    }
+    
+/**
+ * computes deformation energy for a given set of correspondances
+ *  
+ * */
+    double computeDeformationEnergy(MatrixXd set1, MatrixXd set2, MatrixXi MNN){
+        double E_c = 0.0;
+        for (int k = 0; k < MNN.rows(); k++){
+            if(MNN.row(k)(0) != -1) {
+                E_c += (set1.row(k)-set2.row(MNN.row(k)(0))).norm();
+            }
+        }
+        return E_c;
+    }
 
 };
 
