@@ -226,13 +226,12 @@ private:
 
 	float angle_between(Vector3d v1, Vector3d v2)
 	{
-		float cosa = v1.dot(v2);
-		if(cosa >= 1.f)
-			return 0.f;
-		else if(cosa <= -1.f)
-			return M_PI;
-		else
-			return std::acos(cosa);
+		float dot = v1(0)*v2(0) + v1(1)*v2(1) + v1(2)*v2(2);    // #between [x1, y1, z1] and [x2, y2, z2]
+		float lenSq1 = v1(0)*v1(0) + v1(1)*v1(1) + v1(2)*v1(2);
+		float lenSq2 = v2(0)*v2(0) + v2(1)*v2(1) + v2(2)*v2(2);
+		float angle = acos(dot/std::sqrt(lenSq1 * lenSq2));
+
+		return angle;
 	}
 
 	int nVertices, nEdges, nFaces;

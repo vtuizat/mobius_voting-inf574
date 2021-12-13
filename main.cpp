@@ -143,6 +143,9 @@ int main(int argc, char *argv[])
   TriangleMeshDS *mesh = new TriangleMeshDS(V1, F1);
   MatrixXd angles;
   angles = mesh->compute_angles();
+
+  std::cout<<angles<<"\n";
+
   int cutoff_face = mesh->get_random_cut_off_face();
   
   MidEdgeDS *midedgemesh = new MidEdgeDS(*mesh);

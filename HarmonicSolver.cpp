@@ -77,21 +77,21 @@ private:
         
         std::cout<<"here6\n";
 
-        FullPivLU<MatrixXd> solver;
-        solver.compute(L);
+        // FullPivLU<MatrixXd> solver;
+        // solver.compute(L);
         
 
         SparseMatrix<double> A(nVertices, nVertices);
         A = L.sparseView();
         // A.makeCompressed();
 
-        // SparseLU<SparseMatrix<double>, COLAMDOrdering<int>> solver;
+        SparseLU<SparseMatrix<double>, COLAMDOrdering<int>> solver;
 
-        // solver.compute(A);
-        // if(solver.info()!=Success) {
-        //     std::cout<<"Decomposition failed !\n";
-        //     return;
-        // }
+        solver.compute(A);
+        if(solver.info()!=Success) {
+            std::cout<<"Decomposition failed !\n";
+            return;
+        }
 
         // solver.analyzePattern(A);
         // if(solver.info()!=Success) {
@@ -107,10 +107,10 @@ private:
 
         VectorXd res(nVertices);
         res = solver.solve(rhs);
-        // if(solver.info()!=Success) {
-        //     std::cout<<"Solving failed !\n";
-        //     return;
-        // }
+        if(solver.info()!=Success) {
+            std::cout<<"Solving failed !\n";
+            return;
+        }
         std::cout<<"here6\n";
         std::cout<<res<<"\n";
 
@@ -121,7 +121,7 @@ private:
             (*harmonic_weights)(edge, 0) = (res(i) + res(j))/2;
 
         }
-        std::cout<<"here6\n";
+        std::cout<<"here6\n";  
 
         compute_conjugates(faces, F, E, res);
 
@@ -129,7 +129,7 @@ private:
 
     void compute_conjugates(MatrixXi &faces, MatrixXi &F, MatrixXi &E, VectorXd &u){
 
-        (*harmonic_weights)(0) = 0;
+        (*harmonic_weights)(0, 1) = 0;
         
         int n_edges = 0;
         Vector2i edge1, edge2;
@@ -137,7 +137,8 @@ private:
         int face;
         int last, commun;
 
-        while(n_edges < nVertices_ME){    
+        while(n_edges < nVertices_ME-1){
+            std::cout<<"Number of conjugates : "<<n_edges<<"\n";
             for (int face_ME = 0; face_ME < nFaces_ME; face_ME++) {
 
                 v1 = faces(face_ME, 0);
@@ -286,10 +287,13 @@ private:
                 if(adjacency_angles(j, 2) == -1.0) {
                     std::cout<<"Edge at "<<i<<"-"<<adj_vert<<"\n";
                     L(i, adj_vert) = cot(adjacency_angles(j, 1))/2.0;
+                    std::cout<<"Adj : "<<adjacency_angles(j, 1)<<"\n";
                     std::cout<<"MatrixValue : "<<L(i, adj_vert)<<"\n";
                 }
                 else {
                     L(i, adj_vert) = (cot(adjacency_angles(j, 1))+cot(adjacency_angles(j, 2)))/2.0;
+                    std::cout<<"Adj : "<<adjacency_angles(j, 1)<<"\n";
+                    std::cout<<"Adj : "<<adjacency_angles(j, 2)<<"\n";
                     std::cout<<"MatrixValue : "<<L(i, adj_vert)<<"\n";
                 }
                 sum += L(i, adj_vert);
