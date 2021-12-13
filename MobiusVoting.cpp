@@ -22,7 +22,7 @@ using namespace std;
 class MobiusVoting
 {
 public:
-    MobiusVoting( MatrixXd iV1, MatrixXd iF1, MatrixXd iV2, MatrixXd iF2){
+    MobiusVoting( MatrixXd iV1, MatrixXi iF1, MatrixXd iV2, MatrixXi iF2){
         V1 = iV1;
         F1 = iF1;
         V2 = iV2;
@@ -91,7 +91,8 @@ public:
 
     }
 private:
-    MatrixXd V1, F1, V2, F2;
+    MatrixXd V1, V2;
+    MatrixXi F1, F2;
 
 /**
  * This function samples the potential correspondances vertices from the mesh
