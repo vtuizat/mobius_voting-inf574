@@ -2,6 +2,7 @@
 #include <igl/edges.h>
 #include <igl/per_vertex_normals.h>
 #include <igl/exact_geodesic.h>
+#include <igl/edges.h>
 #include <fstream>
 #include <iostream>
 #include <ostream>
@@ -45,6 +46,13 @@ public:
         V = &V_in;
     	F = &F_in;
 
+		igl::edges(*F, *E);
+		std::cout<<(*E).rows()<<" "<<(*E).cols()<<"\n";
+
+		nEdges = (*E).rows();
+
+		std::cout<<" Number of edges : "<<nEdges<<"\n";
+
 		N = new MatrixXd(nVertices, 3);
 		C = new MatrixXd(nVertices, 3);
 
@@ -52,11 +60,14 @@ public:
             compute_per_vertex_normals();
         }
 
+		nVertices = (*V).rows();
+
     }
 
 	MatrixXd compute_angles(){
 
 		std::cout<<"Computing angles...\n";
+
 
 		MatrixXd angles_per_faces(nFaces, 3);
 		
@@ -84,33 +95,46 @@ public:
 
 	int get_cut_face(){
 
+		std::cout<<"Compute Face to cut off...\n";
+
 		double mean_dist, min_mean;
 
 		VectorXd dist_f;
-		VectorXi all_faces;
-		all_faces.setLinSpaced((*F).rows(),0,(*F).rows()-1);
-		dist_f = geodesic_dist_face(0, all_faces);
+		VectorXi all_verts;
+		all_verts.setLinSpaced((*V).rows(),0,(*V).rows()-1);
+		dist_f = geodesic_dist_face(0, all_verts);
 		min_mean = dist_f.mean();
 
 		int idx = 0;
-		for (int f = 1; f < nFaces; f++){
-			dist_f = geodesic_dist_face(f, all_faces);
+		for (int v = 1; v < nVertices; v++){
+			dist_f = geodesic_dist_face(v, all_verts);
 			mean_dist = dist_f.mean();
 			if (mean_dist < min_mean) {
 				min_mean = mean_dist;
-				idx = f;
+				idx = v;
 			}
 		}
 
-		return idx;
+		int face_idx = 0;
+		while ((*F)(face_idx, 0)!=idx && (*F)(face_idx, 1)!=idx && (*F)(face_idx, 1)!=idx){
+			face_idx++;
+		}
+
+		return face_idx;
 	}
 
-	VectorXd geodesic_dist_face(int f, VectorXi targets){
+	int get_random_cut_off_face(){
+		int face = std::rand()%nFaces;
+		std::cout<<"Selected face to cut off : "<<face<<"\n";
+		return face;
+	}
+
+	VectorXd geodesic_dist_face(int v, VectorXi targets){
 
 		VectorXi VS, FS, VT, FT;
-		FS.resize(1);
-		FS << f;
-		FT = targets;
+		VS.resize(1);
+		VS << v;
+		VT = targets;
 		VectorXd dist;
 		igl::exact_geodesic(*V, *F, VS, FS, VT, FT, dist);
 
@@ -118,8 +142,36 @@ public:
 
 	}
 
+	Vector2i getFaceIndexFromEdge(int v1, int v2){
+		
+		Vector2i idx = {-1, -1};
+		int nf = 0;
+		int f = 0;
+		bool v1_in_face, v2_in_face;
+
+		while (nf < 2 && f < nFaces) {
+
+			v1_in_face = ((*F).row(f).array() == v1).any();
+			v2_in_face = ((*F).row(f).array() == v2).any();
+			if (v1_in_face && v2_in_face){
+				idx(nf) = f;
+				nf++;
+			}
+			f++;
+		}
+
+		return idx;
+	}
+
+	// int getFacefromEdge(int edge){
+	// }
+
 	MatrixXd getVert(){
 		return *V;
+	}	
+	
+	MatrixXi getEdges(){
+		return *E;
 	}
 
 	MatrixXi getFaces(){
@@ -132,6 +184,14 @@ public:
 	int sizeOfVertices()
 	{
 		return nVertices;
+	}
+
+	/** 
+	 * Return the number of vertices
+	 **/
+	int sizeOfEdges()
+	{
+		return nEdges;
 	}
 
 
@@ -175,9 +235,10 @@ private:
 			return std::acos(cosa);
 	}
 
-	int nVertices, nFaces;
+	int nVertices, nEdges, nFaces;
 
 	MatrixXd *V;
+	MatrixXi *E;
 	MatrixXi *F;
     MatrixXd *N;
     MatrixXd *C;

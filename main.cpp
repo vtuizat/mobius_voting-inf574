@@ -4,6 +4,7 @@
 #include <igl/gaussian_curvature.h>
 #include <igl/octree.h>
 #include <igl/knn.h>
+#include <igl/edges.h>
 #include <iostream>
 #include <ostream>
 
@@ -142,19 +143,35 @@ int main(int argc, char *argv[])
   TriangleMeshDS *mesh = new TriangleMeshDS(V1, F1);
   MatrixXd angles;
   angles = mesh->compute_angles();
+  int cutoff_face = mesh->get_random_cut_off_face();
   
   MidEdgeDS *midedgemesh = new MidEdgeDS(*mesh);
 
-  //V1 = midedgemesh->getVert();
-  //F1 = midedgemesh->getFaces();
+  std::cout << "Vertices_midEdge: " << midedgemesh->getVert().rows() << std::endl;
+  std::cout << "Faces_midEdge:    " << midedgemesh->getFaces().rows() << std::endl;
+  std::cout<<"here0\n";
+
+  MatrixXi faces = midedgemesh->getFaces();
+  std::cout<<"here0\n";
+  MatrixXi edges;
+  igl::edges(F1, edges);
 
 
-  std::cout << "Vertices_midEdge: " << V1.rows() << std::endl;
-  std::cout << "Faces_midEdge:    " << F1.rows() << std::endl;
+  std::cout<<"here0\n";
 
-  HarmonicSolver *HS = new HarmonicSolver(V1.rows(), F1.rows(), angles);
+  HarmonicSolver *HS = new HarmonicSolver(V1.rows(), F1.rows(), midedgemesh->getVert().rows(), midedgemesh->getFaces().rows(), cutoff_face, angles);
 
-  HS->compute_harmonic_weights(F1);
+  std::cout<<"here3\n";
+
+  MatrixXcd complex_flattening;
+  complex_flattening = HS->get_complex_flattening(faces, F1, edges);
+
+  
+  std::cout<<"here9\n";
+
+  V1 = midedgemesh->getVert();
+  F1 = midedgemesh->getFaces();
+
 
   igl::opengl::glfw::Viewer viewer; // create the 3d viewer
   viewer.callback_key_down = &key_down; // for dealing with keyboard events
