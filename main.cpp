@@ -9,6 +9,8 @@
 
 #include "MidEdgeDS.cpp"
 #include "HarmonicSolver.cpp"
+//#include "MobiusVoting.cpp"
+#include "testsX.cpp"
 
 using namespace Eigen; // to use the classes provided by Eigen library
 
@@ -132,6 +134,7 @@ MatrixXd sample_correspondances(const MatrixXd &V, const MatrixXi &F, int N){
 // ------------ main program ----------------
 int main(int argc, char *argv[])
 {
+  testsX();
   igl::readOFF("../data/cat0.off", V1, F1); // Load an input mesh in OFF format
   //igl::readOFF("/Users/victor/Documents/ENSTA/inf574/projet/dataToOFF/converted_data/cat0.off", V1, F1); // Load an input mesh in OFF format
 
@@ -154,7 +157,7 @@ int main(int argc, char *argv[])
 
   HarmonicSolver *HS = new HarmonicSolver(V1.rows(), F1.rows(), angles);
 
-  HS->compute_harmonic_weights(F1);
+  //HS->compute_harmonic_weights(F1);
 
   igl::opengl::glfw::Viewer viewer; // create the 3d viewer
   viewer.callback_key_down = &key_down; // for dealing with keyboard events

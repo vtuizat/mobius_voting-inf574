@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <complex>
 #include <cmath>
+#include <iostream>
+
 
 
 
@@ -28,13 +30,57 @@ public:
         V2 = iV2;
         F2 = iF2;
     };
-    ~MobiusVoting();
+    //~MobiusVoting();
 
-    void computeCorrespondances(int votingIterations, int minimalSubsetSize){
+/**
+ * This function samples the potential correspondances vertices from the mesh
+ * V,F : mesh data
+ * N number of neighbors used to compute local Gauss curvature maxima
+ * returns matrix of coordinates of potential correspondances vertices 
+ * */
+    MatrixXd sample_correspondances(const MatrixXd &V, const MatrixXi &F, int N){
+        VectorXd K;
+
+        igl::gaussian_curvature(V,F,K);
+
+        // getting the local maxima of of gaussian curvature
+
+        int n = V.rows();
+        int n_neighbors = N;
+        MatrixXi neighbors;
+        std::vector<int> localMaxima;
+
+        std::vector<std::vector<int > > O_PI;
+        MatrixXi O_CH;
+        MatrixXd O_CN;
+        VectorXd O_W;
+        igl::octree(V,O_PI,O_CH,O_CN,O_W);
+        igl::knn(V, n_neighbors, O_PI, O_CH, O_CN, O_W, neighbors);
+
+        VectorXd localK(n_neighbors);
+        for(int l = 0; l < n; l++){
+            for (int m = 0; m < n_neighbors; m++){
+            localK(m) = K(neighbors(l,m));
+            }
+            if (K(l) >= localK.maxCoeff()){
+            localMaxima.push_back(l);
+            }
+        } 
+
+        MatrixXd sortedV(localMaxima.size(), 3);
+        for (int k = 0; k < localMaxima.size(); k++){
+            sortedV.row(k) = V.row(localMaxima[k]);
+        }
+        return sortedV;
+    }
+/**
+ * This function computes the correspondance matrix between S1 and S2 with votingIterations votes
+ * */
+    MatrixXd computeCorrespondanceMatrix(MatrixXd S1, MatrixXd S2, int votingIterations, int minimalSubsetSize){
 
         // sampling potential correspondances for each mesh
-        MatrixXd S1 = sample_correspondances(V1, F1, 50);
-        MatrixXd S2 = sample_correspondances(V2, F2, 50);
+        //MatrixXd S1 = sample_correspondances(V1, F1, 50);
+        //MatrixXd S2 = sample_correspondances(V2, F2, 50);
 
         //compute mapping
 
@@ -81,60 +127,53 @@ public:
                 double E_c = computeDeformationEnergy(CtoR3(mobiusMappedS1),CtoR3(mobiusMappedS1),MNN);
                 for (int k = 0; k < MNN.rows(); k++){
                     if(MNN.row(k)(0) != -1) {
-                        C(k,MNN.row(k)(0)) += 1 / (epsilon);
+                        C(k,MNN.row(k)(0)) += 1 / (epsilon + E_c);
                     }
                 }
             }
 
         }
 
-
+        return C;
     }
+/**
+ * This function takes a correspondance matrix and returns a vector of coupled correspondances <mesh1, mesh2>  
+ * */
+    vector<pair<int,int>> processCorrespondanceMatrix(MatrixXd C){
+        int n_rows = C.rows();
+        int n_cols =C.cols(); 
+        vector<pair<int,int>> correspondances;
+
+        pair<int,int> maxIndex;
+        double maxC = C.maxCoeff(&maxIndex.first, &maxIndex.second); 
+        if (maxC != 0) C /= maxC;
+
+        unsigned i = 0;
+        while (maxC != 0 && i < C.size()){
+            correspondances.push_back(maxIndex);
+            C.row(maxIndex.first) = VectorXd::Zero(n_rows);
+            C.col(maxIndex.second) = VectorXd::Zero(n_cols);
+            maxC = C.maxCoeff(&maxIndex.first, &maxIndex.second);
+            i++;
+        }
+
+        return correspondances;
+    }
+
+// TESTS
+    void testMNN(MatrixXd set1, MatrixXd set2){
+        cout << "set 1 :\n" << set1 << "\nset 2 :\n" << set2 <<"\n";
+        MatrixXi M = mutual_nearest_neighbor(set1,set2);
+        cout << "MNN :\n";
+        for (int i =0; i < M.rows(); i++){
+            cout << i << " " << M(i, 0) << "\n";
+        }
+    } 
+
 private:
     MatrixXd V1, V2;
     MatrixXi F1, F2;
 
-/**
- * This function samples the potential correspondances vertices from the mesh
- * V,F : mesh data
- * N number of neighbors used to compute local Gauss curvature maxima
- * returns matrix of coordinates of potential correspondances vertices 
- * */
-    MatrixXd sample_correspondances(const MatrixXd &V, const MatrixXi &F, int N){
-        VectorXd K;
-
-        igl::gaussian_curvature(V,F,K);
-
-        // getting the local maxima of of gaussian curvature
-
-        int n = V.rows();
-        int n_neighbors = N;
-        MatrixXi neighbors;
-        std::vector<int> localMaxima;
-
-        std::vector<std::vector<int > > O_PI;
-        MatrixXi O_CH;
-        MatrixXd O_CN;
-        VectorXd O_W;
-        igl::octree(V,O_PI,O_CH,O_CN,O_W);
-        igl::knn(V, n_neighbors, O_PI, O_CH, O_CN, O_W, neighbors);
-
-        VectorXd localK(n_neighbors);
-        for(int l = 0; l < n; l++){
-            for (int m = 0; m < n_neighbors; m++){
-            localK(m) = K(neighbors(l,m));
-            }
-            if (K(l) >= localK.maxCoeff()){
-            localMaxima.push_back(l);
-            }
-        } 
-
-        MatrixXd sortedV(localMaxima.size(), 3);
-        for (int k = 0; k < localMaxima.size(); k++){
-            sortedV.row(k) = V.row(localMaxima[k]);
-        }
-        return sortedV;
-    }
 /**
  * This function computes the mobius transformation that maps origin to target
  * origin : complex triplet
@@ -179,7 +218,7 @@ private:
         VectorXd O_W_1;
         igl::octree(set1,O_PI_1,O_CH_1,O_CN_1,O_W_1);
         igl::knn(set1, set2, n_neighbors, O_PI_1, O_CH_1, O_CN_1, O_W_1, neighbors_1);
-
+        cout << neighbors_1 << "\n";
         MatrixXi neighbors_2;
         std::vector<std::vector<int > > O_PI_2;
         MatrixXi O_CH_2;
@@ -187,60 +226,84 @@ private:
         VectorXd O_W_2;
         igl::octree(set2,O_PI_2,O_CH_2,O_CN_2,O_W_2);
         igl::knn(set2, set1, n_neighbors, O_PI_2, O_CH_2, O_CN_2, O_W_2, neighbors_2);
-
+        cout << neighbors_2 << "\n";
         // building MVN matrix 
         MatrixXi MVN = MatrixXi::Zero(n, n_neighbors);
         for (int i = 0; i < n; i++){
 
             for (int j = 0; j < n_neighbors; j++){
-                bool is_neighbor = false;
+                /* bool is_neighbor = false;
                 int k = 0;
-                while (!is_neighbor && k < n_neighbors){
-                    if (neighbors_1(i, j) == neighbors_2(j, k)){
+                while (!is_neighbor && k < set2.rows()){
+                    if (neighbors_1(i, j) == neighbors_2(k, j)){
                         is_neighbor = true;
                         MVN(i,j) += j + k;
                     }
                     k++;
                 }
-                if (!is_neighbor) MVN(i,j) = 100;
+                if (!is_neighbor) MVN(i,j) = 100; */
+                MVN(i,j) = mvn(i, neighbors_1(i,j), neighbors_1, neighbors_2);
             }
         }
 
+        cout << "\n MVN mat : \n" << MVN;
+
         // finding mutual neighbors
-        std::vector<Vector3i> candidates;
+        std::vector<Vector3i> candidates, c_copy;
         
         for (int i = 0; i < n; i++){
 
             for (int j = 0; j < n_neighbors; j++){
                 Vector3i elt;
-                elt << i, j, MVN(i,j);
+                elt << i, neighbors_1(i,j), MVN(i,j);
+                cout << "\n elt : " << elt.transpose() << "\n";
                 candidates.push_back(elt);
             }
         }
-        
+        c_copy = candidates;
+        cout << "\n candidates : \n" ;
+        for (int o = 0; o<candidates.size(); o++) cout << candidates.at(o)(0) << " " << candidates.at(o)(1) << " " << candidates.at(o)(2) << "\n" ;
         std::sort(candidates.begin(), candidates.end(),
             [](Vector3i a, Vector3i b) {
                 return (a(2) < b(2));
             } 
         );
+        /* bool is_equal = candidates == c_copy;
+        cout << "\n sorted : \n";
+        for (int o = 0; o<candidates.size(); o++) cout << candidates.at(o)(0) << " " << candidates.at(o)(1) << " " << candidates.at(o)(2) << "\n" ;
+        cout << "equal" << is_equal; */
 
         //selecting the best pairs
         MatrixXi correspondances = -1 * MatrixXi::Ones(n, 2);
         int count = 0;
         int paired_count = 0;
         while (count < candidates.size() && paired_count < n){
-            if(correspondances(candidates.at(count)(0),0) == -1){
+            if(correspondances(candidates.at(count)(0),0) == -1 && candidates.at(count)(2) != 100){
                 correspondances.row(candidates.at(count)(0)) << candidates.at(count)(1), candidates.at(count)(2);
                 paired_count++;
             }
-            else if(candidates.at(count)(2) == correspondances.row(candidates.at(count)(0))(1) &&
-            (set1.row(candidates.at(count)(0)) - set2.row(candidates.at(count)(1))).norm() > (set1.row(candidates.at(count)(0)) - set2.row(correspondances.row(candidates.at(count)(0))(0) )).norm() ){
+            else if(candidates.at(count)(2) == correspondances.row(candidates.at(count)(0))(1) && candidates.at(count)(2) != 100 &&
+            (set1.row(candidates.at(count)(0)) - set2.row(candidates.at(count)(1))).norm() < (set1.row(candidates.at(count)(0)) - set2.row(correspondances.row(candidates.at(count)(0))(0) )).norm() ){
                 correspondances.row(candidates.at(count)(0)) << candidates.at(count)(1), candidates.at(count)(2);
             }
             count++;
+            //cout << "\n count = " << count << "\n paired_count = " << paired_count <<" coresp : \n" << correspondances <<"\n";
         }
 
         return correspondances.col(0);
+    }
+/**
+ * computes the mutual neighborhood value for i, j
+ * */
+    int mvn(int i, int j, MatrixXi neighbors_1,MatrixXi neighbors_2){
+        int value = 100;
+        for (int x = 0; x < neighbors_1.cols(); x++){
+            if(neighbors_1(i, x) == j) value = x;
+        }
+        for (int x = 0; x < neighbors_2.cols(); x++){
+            if(neighbors_2(j, x) == i && value != 100) value += x;
+        }
+        return value;
     }
 
 /**
@@ -267,6 +330,8 @@ private:
         }
         return E_c;
     }
+
+
 
 };
 
