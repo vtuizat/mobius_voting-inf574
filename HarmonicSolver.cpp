@@ -27,12 +27,8 @@ public:
         angles = &angles_in;
         //harmonic_weights = new MatrixXd(nVertices_ME, 2);
         
-        std::cout<<"here1\n";
         harmonic_weights = new MatrixXd(nVertices_ME, 2);
-        std::cout<<"here1\n";
         (*harmonic_weights) = MatrixXd::Constant(nVertices_ME, 2, -1.0);
-        
-        std::cout<<"here2\n";
 
         //cut_off_face = min_geodesic_distance();
 
@@ -40,16 +36,10 @@ public:
 
     VectorXcd get_complex_flattening(MatrixXi &faces, MatrixXi &F, MatrixXi &E){
         VectorXcd res(nVertices_ME);
-        std::cout<<"here4\n";
         const std::complex<double> icomplex(0.0, 1.0);
         compute_harmonic_weights(faces, F, E);
-        std::cout<<"here7\n";
         for (int i = 0; i<nVertices_ME; i++){
             res(i) = (*harmonic_weights)(i, 0) +icomplex*(*harmonic_weights)(i, 1);
-        }
-        for (int weight = 0; weight < nVertices_ME; weight++){
-            // std::cout<<"Complex at "<<weight<<" : "<<(*harmonic_weights)(weight, 0)<<"+i"<<(*harmonic_weights)(weight, 1)<<"\n";
-            // std::cout<<"\t\t"<<res(weight).real()<<"+i"<<res(weight).imag()<<"\n\n";
         }
         return res;
     }
@@ -60,8 +50,6 @@ private:
 
         int v1 = F(cutoff_face, 0);
         int v2 = F(cutoff_face, 1);
-        
-        std::cout<<"here5\n";
 
         MatrixXd L = compute_matrix(F);
 
@@ -75,8 +63,6 @@ private:
 
         rhs(v1) = 1.0;
         rhs(v2) = -1.0;
-        
-        std::cout<<"here6\n";
 
         // FullPivLU<MatrixXd> solver;
         // solver.compute(L);
@@ -112,32 +98,67 @@ private:
             std::cout<<"Solving failed !\n";
             return;
         }
-        std::cout<<"here6\n";
-        std::cout<<res<<"\n";
-        std::cout<<res.size()<<"\n";
-
-        std::cout<<(*harmonic_weights).rows()<<"\n";
-        std::cout<<E.rows()<<"\n";
-        std::cout<<(*harmonic_weights).cols()<<"\n";
-        std::cout<<E.cols()<<"\n";
-        std::cout<<nVertices_ME<<"\n";
+        
         int i, j;
         for (int edge = 0; edge < nVertices_ME; edge++){
             i = E(edge, 0);
             j = E(edge, 1);
             (*harmonic_weights)(edge, 0) = (res(i) + res(j))/2.0;
-            std::cout<<(*harmonic_weights)(edge, 0)<<" ";
 
         }
-        std::cout<<"\n";
 
-        compute_conjugates(faces, F, E, res);
+        compute_conjugates_v2(faces, F, E, res);
 
+
+    }
+
+    void compute_conjugates_v2(MatrixXi &faces, MatrixXi &F, MatrixXi &E, VectorXd &u){
+
+        std::cout<<"Computing conjugate harmonic weights...\n";
         
-        for (int edge = 0; edge < nVertices_ME; edge++){
-            std::cout<<(*harmonic_weights)(edge, 1)<<" ";
+        (*harmonic_weights)(0, 1) = 0;
+
+        VectorXi adj_faces;
+
+        std::vector<int> source_edges;
+        std::vector<int> next_edges;
+
+        source_edges.resize(1);
+        source_edges[0] = 0;
+        
+        int nE = 0;
+        int edge1, edge2, face, opp1, opp2;
+        double angle1, angle2;
+        while (nE < nVertices_ME-1){
+            for (int se = 0; se < source_edges.size(); se++){
+                edge1 = source_edges[se];
+                VectorXi one_ring;
+                get1Ring(edge1, faces, one_ring, adj_faces);
+                for (int te = 0; te < one_ring.size(); te++){
+                    edge2 = one_ring(te);
+                    if ((*harmonic_weights)(edge2, 1) == -1.0){
+                        compute_one_conjugate(edge1, edge2, F, E, u);
+                        next_edges.push_back(edge2);
+                        nE++;
+                    }
+                }
+            }
+            source_edges.clear();
+            source_edges.resize(next_edges.size());
+            source_edges = next_edges;
+            next_edges.clear();
         }
-        std::cout<<"\n";
+    }
+
+
+    void compute_one_conjugate(int source_edge, int target_edge, MatrixXi &F, MatrixXi &E, VectorXd &u){
+        int opp1, opp2, sommet, face;
+        double angle1, angle2;
+        face = getFaceIndexFromEdge(E.row(source_edge), E.row(target_edge), F, opp1, opp2, sommet);
+        angle1 = getAngleFromFaceAndVertex(face, opp1, F);
+        angle2 = getAngleFromFaceAndVertex(face, opp2, F);
+        (*harmonic_weights)(target_edge, 1) = (*harmonic_weights)(source_edge, 1)
+                                              + ((u(opp2)-u(sommet))*cot(angle1) + (u(opp1)-u(sommet))*cot(angle2))/2.0;           
 
     }
 
@@ -267,46 +288,16 @@ private:
 
     }
 
-    // MatrixXd compute_matrix_triplets(MatrixXi &F){
-        
-    //     //MatrixXd L = MatrixXd::Zero(nVertices, nVertices);
-    //     std::vector<Triplet> L;
-
-    //     for (int i = 0; i < nVertices; i++){
-
-    //         float sum = 0;
-
-    //         MatrixXd adjacency_angles = compute_adjacency(i, F);
-
-    //         for (int j = 0; j < adjacency_angles.rows(); j++){
-
-    //             int adj_vert = int(adjacency_angles(j, 0));
-    //             if(adjacency_angles(j, 2) == -1.0) {
-    //                 std::cout<<"Edge at "<<i<<"-"<<adj_vert<<"\n";
-    //                 L.push_back(Triplet(i, adj_vert, cot(adjacency_angles(j, 1))/2.0));
-    //             }
-    //             else {
-    //                 L.push_back(Triplet(i, adj_vert, (cot(adjacency_angles(j, 1))+cot(adjacency_angles(j, 2)))/2.0));
-    //             }
-    //             sum += L[-1].third;
-    //         }
-
-    //         L(i, i) = -sum;
-    //     }
-
-    //     return L;
-
-    // }
-
     MatrixXd compute_matrix(MatrixXi &F){
-        
+
+        std::cout<<"Computing Laplacian Matrix...\n";
         MatrixXd L = MatrixXd::Zero(nVertices, nVertices);
 
         for (int i = 0; i < nVertices; i++){
 
             float sum = 0;
 
-            MatrixXd adjacency_angles = compute_adjacency(i, F);
+            MatrixXd adjacency_angles = compute_adjacency(i, F);  //Matrices de taille (n_adj, 3) avec en M(i, )
 
             for (int j = 0; j < adjacency_angles.rows(); j++){
 
@@ -423,6 +414,7 @@ private:
 		
 		bool nf = false;
 		int f = 0;
+        int res;
 		bool v1_in_face, v2_in_face, v3_in_face;
 
 		while (!nf && f < nFaces) {
@@ -432,12 +424,51 @@ private:
 			v3_in_face = (F.row(f).array() == v3).any();
 			if (v1_in_face && v2_in_face && v3_in_face){
 				nf = true;
-                return f;
+                res = f;
+                break;
 			}
 			f++;
 		}
 
-		return f;
+		return res;
+	}
+    
+    int getFaceIndexFromEdge(Vector2i e1, Vector2i e2, MatrixXi &F, int &opp1, int& opp2, int &sommet){
+		
+		bool nf = false;
+		int f = 0;
+        int v1 = e1(0);
+        int v2 = e1(1);
+        int v3;
+        if (e2(0) == v1){
+            v3 = e2(1);
+            opp1 = v2;
+            opp2 = v3;
+            sommet = v1;
+        }
+        else if (e2(0) == v2){
+            v3 = e2(1);
+            opp1 = v1;
+            opp2 = v3;
+            sommet = v2;
+
+        }
+        else if (e2(1) == v1){
+            v3 = e2(0);
+            opp1 = v2;
+            opp2 = v3;
+            sommet = v1;
+        }
+        else{
+            v3 = e2(0);
+            opp1 = v1;
+            opp2 = v3;
+            sommet = v2;
+        }
+
+        f = getFaceIndexFromVert(v1, v2, v3, F);
+
+        return f;
 	}
 
     double getAngleFromFaceAndVertex(int face, int vertex, MatrixXi &F){

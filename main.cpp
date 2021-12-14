@@ -133,7 +133,7 @@ MatrixXd sample_correspondances(const MatrixXd &V, const MatrixXi &F, int N){
 // ------------ main program ----------------
 int main(int argc, char *argv[])
 {
-  igl::readOFF("../data/cat0.off", V1, F1); // Load an input mesh in OFF format
+  igl::readOFF("../data/cat1.off", V1, F1); // Load an input mesh in OFF format
   //igl::readOFF("/Users/victor/Documents/ENSTA/inf574/projet/dataToOFF/converted_data/cat0.off", V1, F1); // Load an input mesh in OFF format
 
   //  print the number of mesh elements
@@ -146,7 +146,9 @@ int main(int argc, char *argv[])
 
   // std::cout<<angles<<"\n";
 
-  int cutoff_face = mesh->get_random_cut_off_face();
+  //int cutoff_face = mesh->get_cut_face();
+  int cutoff_face = 1157;
+  std::cout<<"CUTOFF FAAAACE !!! "<<cutoff_face<<"\n";
   
   MidEdgeDS *midedgemesh = new MidEdgeDS(*mesh);
 
