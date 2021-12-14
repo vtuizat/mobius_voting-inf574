@@ -15,7 +15,7 @@ class HarmonicSolver
 {
 
 public:
-    HarmonicSolver(int nV, int nF, int nV_ME, int nF_ME, int cutoff_face_in, MatrixXd  &angles_in){
+    HarmonicSolver(int nV, int nF, int nV_ME, int nF_ME, int cutoff_face_in, MatrixXd &angles_in){
         
         nVertices = nV;
         nFaces = nF;
@@ -41,18 +41,19 @@ public:
     VectorXcd get_complex_flattening(MatrixXi &faces, MatrixXi &F, MatrixXi &E){
         VectorXcd res(nVertices_ME);
         std::cout<<"here4\n";
-        std::complex<double> icomplex(0.0, 1.0);
+        const std::complex<double> icomplex(0.0, 1.0);
         compute_harmonic_weights(faces, F, E);
         std::cout<<"here7\n";
         for (int i = 0; i<nVertices_ME; i++){
             res(i) = (*harmonic_weights)(i, 0) +icomplex*(*harmonic_weights)(i, 1);
         }
-        std::cout<<"here8\n";
+        for (int weight = 0; weight < nVertices_ME; weight++){
+            // std::cout<<"Complex at "<<weight<<" : "<<(*harmonic_weights)(weight, 0)<<"+i"<<(*harmonic_weights)(weight, 1)<<"\n";
+            // std::cout<<"\t\t"<<res(weight).real()<<"+i"<<res(weight).imag()<<"\n\n";
+        }
         return res;
     }
 
-
-    
 private:
 
         void compute_harmonic_weights(MatrixXi &faces, MatrixXi &F, MatrixXi &E){
@@ -113,17 +114,25 @@ private:
         }
         std::cout<<"here6\n";
         std::cout<<res<<"\n";
+        std::cout<<res.size()<<"\n";
 
         int i, j;
         for (int edge; edge < nVertices_ME; edge++){
             i = E(edge, 0);
             j = E(edge, 1);
-            (*harmonic_weights)(edge, 0) = (res(i) + res(j))/2;
+            (*harmonic_weights)(edge, 0) = (res(i) + res(j))/2.0;
+            std::cout<<(*harmonic_weights)(edge, 0)<<" ";
 
         }
-        std::cout<<"here6\n";  
+        std::cout<<"\n";
 
         compute_conjugates(faces, F, E, res);
+
+        
+        for (int edge = 0; edge < nVertices_ME; edge++){
+            std::cout<<(*harmonic_weights)(edge, 1)<<" ";
+        }
+        std::cout<<"\n";
 
     }
 
@@ -153,9 +162,12 @@ private:
                     else if (edge2(last) == edge1(1))  {last = 1; commun = 1;}
                     face = getFaceIndexFromVert(edge1(0), edge1(1), edge2(last), F);
 
+                    // std::cout<<getAngleFromFaceAndVertex(face, edge2(last), F)<<"\n";
+                    // std::cout<<getAngleFromFaceAndVertex(face, edge2(!commun), F)<<"\n\n";
+
                     (*harmonic_weights)(v1, 1) = (*harmonic_weights)(v2, 1)
                                                  + ((u(edge1(!commun))-u(edge1(commun)))*cot(getAngleFromFaceAndVertex(face, edge2(last), F)) 
-                                                 + (u(edge2(last))-u(edge2(!last)))*cot(getAngleFromFaceAndVertex(face, edge1(!commun), F)))/2;
+                                                 + (u(edge2(last))-u(edge2(!last)))*cot(getAngleFromFaceAndVertex(face, edge1(!commun), F)))/2.0;
                     n_edges ++;
 
                 }
@@ -167,10 +179,12 @@ private:
                     if (edge2(last) == edge1(0))  {last = 1; commun = 0;}
                     else if (edge2(last) == edge1(1))  {last = 1; commun = 1;}
                     face = getFaceIndexFromVert(edge1(0), edge1(1), edge2(last), F);
+                    // std::cout<<getAngleFromFaceAndVertex(face, edge2(last), F)<<"\n";
+                    // std::cout<<getAngleFromFaceAndVertex(face, edge2(!commun), F)<<"\n";
 
                     (*harmonic_weights)(v2, 1) = (*harmonic_weights)(v1, 1)
                                                  + ((u(edge1(!commun))-u(edge1(commun)))*cot(getAngleFromFaceAndVertex(face, edge2(last), F)) 
-                                                 + (u(edge2(last))-u(edge2(!last)))*cot(getAngleFromFaceAndVertex(face, edge1(!commun), F)))/2;
+                                                 + (u(edge2(last))-u(edge2(!last)))*cot(getAngleFromFaceAndVertex(face, edge1(!commun), F)))/2.0;
                     n_edges ++;
 
                 }
@@ -182,10 +196,12 @@ private:
                     if (edge2(last) == edge1(0))  {last = 1; commun = 0;}
                     else if (edge2(last) == edge1(1))  {last = 1; commun = 1;}
                     face = getFaceIndexFromVert(edge1(0), edge1(1), edge2(last), F);
+                    // std::cout<<getAngleFromFaceAndVertex(face, edge2(last), F)<<"\n";
+                    // std::cout<<getAngleFromFaceAndVertex(face, edge2(!commun), F)<<"\n";
 
                     (*harmonic_weights)(v2, 1) = (*harmonic_weights)(v3, 1)
                                                  + ((u(edge1(!commun))-u(edge1(commun)))*cot(getAngleFromFaceAndVertex(face, edge2(last), F)) 
-                                                 + (u(edge2(last))-u(edge2(!last)))*cot(getAngleFromFaceAndVertex(face, edge1(!commun), F)))/2;
+                                                 + (u(edge2(last))-u(edge2(!last)))*cot(getAngleFromFaceAndVertex(face, edge1(!commun), F)))/2.0;
                     
                     n_edges ++;
                     
@@ -198,10 +214,12 @@ private:
                     if (edge2(last) == edge1(0))  {last = 1; commun = 0;}
                     else if (edge2(last) == edge1(1))  {last = 1; commun = 1;}
                     face = getFaceIndexFromVert(edge1(0), edge1(1), edge2(last), F);
+                    // std::cout<<getAngleFromFaceAndVertex(face, edge2(last), F)<<"\n";
+                    // std::cout<<getAngleFromFaceAndVertex(face, edge2(!commun), F)<<"\n";
 
                     (*harmonic_weights)(v3, 1) = (*harmonic_weights)(v2, 1)
                                                  + ((u(edge1(!commun))-u(edge1(commun)))*cot(getAngleFromFaceAndVertex(face, edge2(last), F)) 
-                                                 + (u(edge2(last))-u(edge2(!last)))*cot(getAngleFromFaceAndVertex(face, edge1(!commun), F)))/2;
+                                                 + (u(edge2(last))-u(edge2(!last)))*cot(getAngleFromFaceAndVertex(face, edge1(!commun), F)))/2.0;
                     n_edges ++;
                     
                 }
@@ -213,10 +231,12 @@ private:
                     if (edge2(last) == edge1(0))  {last = 1; commun = 0;}
                     else if (edge2(last) == edge1(1))  {last = 1; commun = 1;}
                     face = getFaceIndexFromVert(edge1(0), edge1(1), edge2(last), F);
+                    // std::cout<<getAngleFromFaceAndVertex(face, edge2(last), F)<<"\n";
+                    // std::cout<<getAngleFromFaceAndVertex(face, edge2(!commun), F)<<"\n";
 
                     (*harmonic_weights)(v3, 1) = (*harmonic_weights)(v1, 1)
                                                  + ((u(edge1(!commun))-u(edge1(commun)))*cot(getAngleFromFaceAndVertex(face, edge2(last), F)) 
-                                                 + (u(edge2(last))-u(edge2(!last)))*cot(getAngleFromFaceAndVertex(face, edge1(!commun), F)))/2;
+                                                 + (u(edge2(last))-u(edge2(!last)))*cot(getAngleFromFaceAndVertex(face, edge1(!commun), F)))/2.0;
                     n_edges ++;
                     
                 }
@@ -228,10 +248,12 @@ private:
                     if (edge2(last) == edge1(0))  {last = 1; commun = 0;}
                     else if (edge2(last) == edge1(1))  {last = 1; commun = 1;}
                     face = getFaceIndexFromVert(edge1(0), edge1(1), edge2(last), F);
+                    // std::cout<<getAngleFromFaceAndVertex(face, edge2(last), F)<<"\n";
+                    // std::cout<<getAngleFromFaceAndVertex(face, edge2(!commun), F)<<"\n";
 
                     (*harmonic_weights)(v1, 1) = (*harmonic_weights)(v3, 1)
                                                  + ((u(edge1(!commun))-u(edge1(commun)))*cot(getAngleFromFaceAndVertex(face, edge2(last), F)) 
-                                                 + (u(edge2(last))-u(edge2(!last)))*cot(getAngleFromFaceAndVertex(face, edge1(!commun), F)))/2;
+                                                 + (u(edge2(last))-u(edge2(!last)))*cot(getAngleFromFaceAndVertex(face, edge1(!commun), F)))/2.0;
                     n_edges ++;
                     
                 }
@@ -285,22 +307,22 @@ private:
 
                 int adj_vert = int(adjacency_angles(j, 0));
                 if(adjacency_angles(j, 2) == -1.0) {
-                    std::cout<<"Edge at "<<i<<"-"<<adj_vert<<"\n";
+                    // std::cout<<"Edge at "<<i<<"-"<<adj_vert<<"\n";
                     L(i, adj_vert) = cot(adjacency_angles(j, 1))/2.0;
-                    std::cout<<"Adj : "<<adjacency_angles(j, 1)<<"\n";
-                    std::cout<<"MatrixValue : "<<L(i, adj_vert)<<"\n";
+                    // std::cout<<"Adj : "<<adjacency_angles(j, 1)<<"\n";
+                    // std::cout<<"MatrixValue : "<<L(i, adj_vert)<<"\n";
                 }
                 else {
                     L(i, adj_vert) = (cot(adjacency_angles(j, 1))+cot(adjacency_angles(j, 2)))/2.0;
-                    std::cout<<"Adj : "<<adjacency_angles(j, 1)<<"\n";
-                    std::cout<<"Adj : "<<adjacency_angles(j, 2)<<"\n";
-                    std::cout<<"MatrixValue : "<<L(i, adj_vert)<<"\n";
+                    // std::cout<<"Adj : "<<adjacency_angles(j, 1)<<"\n";
+                    // std::cout<<"Adj : "<<adjacency_angles(j, 2)<<"\n";
+                    // std::cout<<"MatrixValue : "<<L(i, adj_vert)<<"\n";
                 }
                 sum += L(i, adj_vert);
             }
 
             L(i, i) = -sum;
-            std::cout<<"MatrixDiagValue : "<<L(i, i)<<"\n";
+            // std::cout<<"MatrixDiagValue : "<<L(i, i)<<"\n";
 
         }
 
@@ -413,7 +435,7 @@ private:
 		return f;
 	}
 
-    int getAngleFromFaceAndVertex(int face, int vertex, MatrixXi &F){
+    double getAngleFromFaceAndVertex(int face, int vertex, MatrixXi &F){
         int idx = 0;
         while (F(face, idx) != vertex) idx++;
         return (*angles)(face, idx);

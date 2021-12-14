@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
   MatrixXd angles;
   angles = mesh->compute_angles();
 
-  std::cout<<angles<<"\n";
+  // std::cout<<angles<<"\n";
 
   int cutoff_face = mesh->get_random_cut_off_face();
   
@@ -166,13 +166,18 @@ int main(int argc, char *argv[])
 
   std::cout<<"here3\n";
 
-  MatrixXcd complex_flattening;
+  VectorXcd complex_flattening;
   complex_flattening = HS->get_complex_flattening(faces, F1, edges);
 
   
   std::cout<<"here9\n";
+  MatrixXd vflatten(complex_flattening.rows(), 2);
+  for (int i = 0; i < complex_flattening.rows(); i++){
+    vflatten(i, 0) = complex_flattening(i).real();
+    vflatten(i, 1) = complex_flattening(i).imag();
+  }
 
-  V1 = midedgemesh->getVert();
+  V1 = vflatten;
   F1 = midedgemesh->getFaces();
 
 
