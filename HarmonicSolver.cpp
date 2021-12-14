@@ -116,8 +116,13 @@ private:
         std::cout<<res<<"\n";
         std::cout<<res.size()<<"\n";
 
+        std::cout<<(*harmonic_weights).rows()<<"\n";
+        std::cout<<E.rows()<<"\n";
+        std::cout<<(*harmonic_weights).cols()<<"\n";
+        std::cout<<E.cols()<<"\n";
+        std::cout<<nVertices_ME<<"\n";
         int i, j;
-        for (int edge; edge < nVertices_ME; edge++){
+        for (int edge = 0; edge < nVertices_ME; edge++){
             i = E(edge, 0);
             j = E(edge, 1);
             (*harmonic_weights)(edge, 0) = (res(i) + res(j))/2.0;

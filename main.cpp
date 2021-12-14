@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
   MatrixXi faces = midedgemesh->getFaces();
   std::cout<<"here0\n";
   MatrixXi edges;
-  igl::edges(F1, edges);
+  edges = mesh->getEdges();
 
 
   std::cout<<"here0\n";

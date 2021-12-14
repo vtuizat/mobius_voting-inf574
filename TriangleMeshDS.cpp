@@ -46,6 +46,8 @@ public:
         V = &V_in;
     	F = &F_in;
 
+		E = new MatrixXi;
+
 		igl::edges(*F, *E);
 		std::cout<<(*E).rows()<<" "<<(*E).cols()<<"\n";
 
