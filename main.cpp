@@ -4,8 +4,12 @@
 #include <igl/gaussian_curvature.h>
 #include <igl/octree.h>
 #include <igl/knn.h>
+#include <igl/edges.h>
 #include <iostream>
 #include <ostream>
+
+#include "MidEdgeDS.cpp"
+#include "HarmonicSolver.cpp"
 
 using namespace Eigen; // to use the classes provided by Eigen library
 
@@ -125,24 +129,65 @@ MatrixXd sample_correspondances(const MatrixXd &V, const MatrixXi &F, int N){
   return sortedV;
 }
 
-void compute_mid_edge_Mesh(const MatrixXd &V, const MatrixXi &F, const MatrixXd &V_mid, const MatrixXi &F_mid){
-  
-}
+
 // ------------ main program ----------------
 int main(int argc, char *argv[])
 {
-  igl::readOFF("../data/cat0.off", V1, F1); // Load an input mesh in OFF format
+  igl::readOFF("../data/cat1.off", V1, F1); // Load an input mesh in OFF format
   //igl::readOFF("/Users/victor/Documents/ENSTA/inf574/projet/dataToOFF/converted_data/cat0.off", V1, F1); // Load an input mesh in OFF format
 
   //  print the number of mesh elements
   std::cout << "Vertices: " << V1.rows() << std::endl;
   std::cout << "Faces:    " << F1.rows() << std::endl;
 
+  TriangleMeshDS *mesh = new TriangleMeshDS(V1, F1);
+  MatrixXd angles;
+  angles = mesh->compute_angles();
+
+  // std::cout<<angles<<"\n";
+
+  //int cutoff_face = mesh->get_cut_face();
+  int cutoff_face = 1157;
+  std::cout<<"CUTOFF FAAAACE !!! "<<cutoff_face<<"\n";
+  
+  MidEdgeDS *midedgemesh = new MidEdgeDS(*mesh);
+
+  std::cout << "Vertices_midEdge: " << midedgemesh->getVert().rows() << std::endl;
+  std::cout << "Faces_midEdge:    " << midedgemesh->getFaces().rows() << std::endl;
+  std::cout<<"here0\n";
+
+  MatrixXi faces = midedgemesh->getFaces();
+  std::cout<<"here0\n";
+  MatrixXi edges;
+  edges = mesh->getEdges();
+
+
+  std::cout<<"here0\n";
+
+  HarmonicSolver *HS = new HarmonicSolver(V1.rows(), F1.rows(), midedgemesh->getVert().rows(), midedgemesh->getFaces().rows(), cutoff_face, angles);
+
+  std::cout<<"here3\n";
+
+  VectorXcd complex_flattening;
+  complex_flattening = HS->get_complex_flattening(faces, F1, edges);
+
+  
+  std::cout<<"here9\n";
+  MatrixXd vflatten(complex_flattening.rows(), 2);
+  for (int i = 0; i < complex_flattening.rows(); i++){
+    vflatten(i, 0) = complex_flattening(i).real();
+    vflatten(i, 1) = complex_flattening(i).imag();
+  }
+
+  V1 = vflatten;
+  F1 = midedgemesh->getFaces();
+
+
   igl::opengl::glfw::Viewer viewer; // create the 3d viewer
   viewer.callback_key_down = &key_down; // for dealing with keyboard events
   viewer.data().set_mesh(V1, F1); // load a face-based representation of the input 3d shape
-  MatrixXd sampledPoints = sample_correspondances(V1, F1, 20);
-  draw_dots(viewer, sampledPoints); // draw the boundaing box (red edges and vertices)
+  // MatrixXd sampledPoints = sample_correspondances(V1, F1, 20);
+  // draw_dots(viewer, sampledPoints); // draw the boundaing box (red edges and vertices)
 
   viewer.launch(); // run the editor
 }
