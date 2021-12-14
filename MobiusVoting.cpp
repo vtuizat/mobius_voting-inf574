@@ -9,12 +9,18 @@
 #include <cmath>
 #include <iostream>
 
-
+//#include "MidEdgeDS.cpp"
+#include "HarmonicSolver.cpp"
 
 
 #ifndef TRIANGLEMESHDS_HEADER
    #define TRIANGLEMESHDS_HEADER
    #include "TriangleMeshDS.cpp"
+#endif
+
+#ifndef MIDEDGEHDS_HEADER
+   #define MIDEDGEHDS_HEADER
+   #include "MidEdgeDS.cpp"
 #endif
 
 using namespace Eigen;
@@ -75,18 +81,51 @@ public:
         }
         return sortedV;
     }
+
+    VectorXcd computeMapping( MatrixXd &V,  MatrixXi &F, int cutoff_face){
+        TriangleMeshDS *mesh = new TriangleMeshDS(V, F);
+        MatrixXd angles;
+        angles = mesh->compute_angles();
+
+        //int cutoff_face = 1157;
+
+        MidEdgeDS *midedgemesh = new MidEdgeDS(*mesh);
+
+        std::cout << "Vertices_midEdge: " << midedgemesh->getVert().rows() << std::endl;
+        std::cout << "Faces_midEdge:    " << midedgemesh->getFaces().rows() << std::endl;
+        //std::cout<<"here0\n";
+
+        MatrixXi faces = midedgemesh->getFaces();
+        //std::cout<<"here0\n";
+        MatrixXi edges;
+        edges = mesh->getEdges();
+
+
+        //std::cout<<"here0\n";
+
+        HarmonicSolver *HS = new HarmonicSolver(V1.rows(), F.rows(), midedgemesh->getVert().rows(), midedgemesh->getFaces().rows(), cutoff_face, angles);
+
+        //std::cout<<"here3\n";
+
+        VectorXcd complex_flattening;
+        complex_flattening = HS->get_complex_flattening(faces, F, edges);
+
+        return complex_flattening;
+
+    }
 /**
  * This function computes the correspondance matrix between S1 and S2 with votingIterations votes
  * */
-    MatrixXd computeCorrespondanceMatrix(MatrixXd S1, MatrixXd S2, int votingIterations, int minimalSubsetSize){
+    MatrixXd computeCorrespondanceMatrix(MatrixXd S1, MatrixXd S2, VectorXcd mappedS1, VectorXcd mappedS2, int votingIterations, int minimalSubsetSize){
 
         // sampling potential correspondances for each mesh
         //MatrixXd S1 = sample_correspondances(V1, F1, 50);
         //MatrixXd S2 = sample_correspondances(V2, F2, 50);
 
         //compute mapping
+        
 
-        VectorXcd mappedS1, mappedS2;
+        //VectorXcd mappedS1;
 
         MatrixXd C(S1.rows(), S2.rows()); // correspondence matrix
         double epsilon = 0.001;
