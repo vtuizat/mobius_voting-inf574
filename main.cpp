@@ -10,6 +10,8 @@
 
 #include "MidEdgeDS.cpp"
 #include "HarmonicSolver.cpp"
+//#include "MobiusVoting.cpp"
+#include "testsX.cpp"
 
 using namespace Eigen; // to use the classes provided by Eigen library
 
@@ -128,11 +130,68 @@ MatrixXd sample_correspondances(const MatrixXd &V, const MatrixXi &F, int N){
   }
   return sortedV;
 }
+// showcase function
+void showcase(int feature){
+  igl::opengl::glfw::Viewer viewer; // create the 3d viewer
 
+  switch (feature) {
+    case 1 : { // showcasing mid-edge mesh construction
+      igl::readOFF("../data/cat0.off", V1, F1);
+      //  print the number of mesh elements
+      std::cout << "Vertices: " << V1.rows() << std::endl;
+      std::cout << "Faces:    " << F1.rows() << std::endl;
 
+      TriangleMeshDS *mesh = new TriangleMeshDS(V1, F1);
+      MatrixXd angles;
+      angles = mesh->compute_angles();
+      
+      MidEdgeDS *midedgemesh = new MidEdgeDS(*mesh);
+
+      V1 = midedgemesh->getVert();
+      F1 = midedgemesh->getFaces();
+
+      viewer.data().set_mesh(V1, F1);
+    }
+
+    case 2 : { // showcasing selection of potential correspondance points
+      igl::readOFF("../data/cat0.off", V1, F1);
+      //  print the number of mesh elements
+      std::cout << "Vertices: " << V1.rows() << std::endl;
+      std::cout << "Faces:    " << F1.rows() << std::endl;
+
+      MobiusVoting voter;// = new MobiusVoting;
+      MatrixXd sampledPoints = voter.sample_correspondances(V1, F1, 50);
+      viewer.data().set_mesh(V1, F1);
+      draw_dots(viewer, sampledPoints);
+
+    }
+    case 3 : {// showcasing mid-edge flattening
+      igl::readOFF("../data/cat0.off", V1, F1);
+      //  print the number of mesh elements
+      std::cout << "Vertices: " << V1.rows() << std::endl;
+      std::cout << "Faces:    " << F1.rows() << std::endl;
+    }
+    case 4 : { // showcasing mutual nearest neighbors
+      MatrixXd V_test, V_test_alt; 
+      MatrixXi F_test, F_test_alt;
+      igl::readOFF("../data/star.off", V_test, F_test);
+      igl::readOFF("../data/star_warp.off", V_test_alt, F_test_alt);
+
+      //MatrixXd V_test_alt = V_test + 0.1 * MatrixXd::Ones(V_test.rows(), V_test.cols()); 
+      MobiusVoting votetest(V_test, F_test, V_test_alt, F_test_alt);
+      votetest.testMNN(V_test, V_test_alt);
+
+      viewer.data().set_mesh(V_test, F_test);
+      
+    }
+  }
+  viewer.launch();
+}
 // ------------ main program ----------------
 int main(int argc, char *argv[])
 {
+ //testsX();
+
   igl::readOFF("../data/cat1.off", V1, F1); // Load an input mesh in OFF format
   //igl::readOFF("/Users/victor/Documents/ENSTA/inf574/projet/dataToOFF/converted_data/cat0.off", V1, F1); // Load an input mesh in OFF format
 
@@ -181,7 +240,6 @@ int main(int argc, char *argv[])
 
   V1 = vflatten;
   F1 = midedgemesh->getFaces();
-
 
   igl::opengl::glfw::Viewer viewer; // create the 3d viewer
   viewer.callback_key_down = &key_down; // for dealing with keyboard events
