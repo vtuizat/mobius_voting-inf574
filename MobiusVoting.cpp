@@ -24,6 +24,8 @@ using namespace std;
 class MobiusVoting
 {
 public:
+    MobiusVoting(){};
+
     MobiusVoting( MatrixXd iV1, MatrixXi iF1, MatrixXd iV2, MatrixXi iF2){
         V1 = iV1;
         F1 = iF1;
