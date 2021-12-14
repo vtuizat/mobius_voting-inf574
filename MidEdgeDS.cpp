@@ -26,7 +26,6 @@ public:
 		nFaces = f;
         
         vertices = new MatrixXd(nVertices, 3);
-        //edges = new MatrixXi(nEdges, 2);
         faces = new MatrixXi(nFaces, 3);
 
 	}
@@ -34,12 +33,10 @@ public:
     MidEdgeDS(TriangleMeshDS &mesh)
     {
 
-        nVertices = (mesh.sizeOfVertices()-1)*3;
-        nEdges = mesh.sizeOfFaces()*3;
+        nVertices = mesh.sizeOfEdges();
         nFaces = mesh.sizeOfFaces();
 
         vertices = new MatrixXd(nVertices, 3);
-        // edges = new MatrixXi(nEdges, 2);
         faces = new MatrixXi(nFaces, 3);
 
         computeMidEdgeDS(mesh);
@@ -56,7 +53,6 @@ public:
 	MatrixXi getFaces(){
 		return *faces;
 	}
-
 
 	/** 
 	 * Return the number of vertices
@@ -101,73 +97,47 @@ private:
         std::cout<<"Computing Mid Edge Mesh...\n";
 
         MatrixXd mesh_vert = mesh.getVert();
+        //MatrixXi mesh_edges = mesh.getEdges();
         MatrixXi mesh_faces = mesh.getFaces();
+        VectorXi face_v_idx = VectorXi::Zero(nFaces);
 
-        MatrixXi check_edge = MatrixXi::Constant(nEdges, nEdges, -1);
+        MatrixXi mesh_edges;
+        igl::edges(mesh_faces, mesh_edges);
 
-        int count_vertices = 0;
+        int vert1_idx, vert2_idx;
+        Vector2i face;
+        Vector3d mid_vert;
 
-        for (int face = 0; face < nFaces; face++){
+        for (int edge = 0; edge < mesh_edges.rows(); edge++){                
+        
+            vert1_idx = mesh_edges(edge, 0);
+            vert2_idx = mesh_edges(edge, 1);
 
-            Vector3i vert_idxs = mesh_faces.row(face);
+            face = mesh.getFaceIndexFromEdge(vert1_idx, vert2_idx);
 
-            Vector3i new_vert_idxs;
-            // Vector2i new_edge1, new_edge2, new_edge3;
-            Vector3i new_face;
+            mid_vert = (mesh_vert.row(vert1_idx)+mesh_vert.row(vert2_idx))/2;
 
-            for(int edge_in_face = 0; edge_in_face < 3; edge_in_face++){
-
-                int vert1_idx = vert_idxs(edge_in_face);
-                int vert2_idx = vert_idxs((edge_in_face+1)%3);
-
-                int new_vert_idx;
-
-                if (check_edge(vert1_idx, vert2_idx) == -1){
-                    
-                    Vector3d mid_vert;
-
-                    Vector3d vert1 = mesh_vert.row(vert1_idx);
-                    Vector3d vert2 = mesh_vert.row(vert2_idx);
-
-                    mid_vert = (vert1+vert2)/2;
-
-                    (*vertices).row(count_vertices) = mid_vert;
-
-                    check_edge(vert1_idx, vert2_idx) = count_vertices;
-                    check_edge(vert2_idx, vert1_idx) = count_vertices;
-                    count_vertices++;
-                }
-                
-                new_vert_idx = check_edge(vert1_idx, vert2_idx);
-
-                new_vert_idxs(edge_in_face) = new_vert_idx;
-
+            (*vertices).row(edge) = mid_vert;
+            if (face(1) == -1){
+                (*faces)(face(0), face_v_idx(face(0))) = edge;
+                face_v_idx(face(0))++;
+            }
+            else {
+                (*faces)(face(0), face_v_idx(face(0))) = edge;
+                (*faces)(face(1), face_v_idx(face(1))) = edge;
+                face_v_idx(face(0))++;
+                face_v_idx(face(1))++;
             }
 
-            // new_edge1(0) = new_vert_idxs(0);
-            // new_edge1(1) = new_vert_idxs(1);
-
-            
-            // new_edge2(0) = new_vert_idxs(1);
-            // new_edge2(1) = new_vert_idxs(2);
-
-            // new_edge3(0) = new_vert_idxs(2);
-            // new_edge3(1) = new_vert_idxs(0);
-
-            // (*edges).row(face*3) = new_edge1;
-            // (*edges).row(face*3+1) = new_edge2;
-            // (*edges).row(face*3+2) = new_edge3;
-
-            new_face = {new_vert_idxs(0), new_vert_idxs(1), new_vert_idxs(2)};
-            (*faces).row(face) = new_face;
-
         }
+
+        std::cout<<"All faces completed? "<< (face_v_idx.array() == 3).all()<<"\n";
 
     }
 
 	int nVertices, nEdges, nFaces;
 
 	MatrixXd *vertices;
-	//MatrixXi *edges;
+	MatrixXi *edges;
 	MatrixXi *faces;
 };
